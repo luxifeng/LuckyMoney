@@ -5,14 +5,14 @@
 @time: 2018/01/28
 """
 
-import os
 import datetime
 from lxml import etree
 from urllib import request
+from scripts import constants
 
 url = 'http://quote.eastmoney.com/stocklist.html'
 reg = '//div[@id="quotesearch"]/ul/li/a/text()'
-path = '../data/stock_list/' + datetime.date.today().strftime('%Y-%m-%d') + '.txt'
+path = constants.STOCK_LIST_FILE_DIR + datetime.date.today().strftime('%Y-%m-%d') + constants.STOCK_LIST_FILE_TYPE
 
 
 # 获取网页内容
