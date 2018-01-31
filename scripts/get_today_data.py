@@ -10,7 +10,7 @@ import tushare as ts
 import pandas as pd
 from scripts import constants as ct
 
-today = '2018-01-30' #datetime.date.today().strftime('%Y-%m-%d')
+today = '2018-01-31' #datetime.date.today().strftime('%Y-%m-%d')
 
 # 读取股票列表
 path = ct.constant.STOCK_LIST_FILE_DIR + today + ct.constant.STOCK_LIST_FILE_TYPE

@@ -8,11 +8,11 @@
 import datetime
 from lxml import etree
 from urllib import request
-from scripts import constants
+from scripts import constants as ct
 
 url = 'http://quote.eastmoney.com/stocklist.html'
 reg = '//div[@id="quotesearch"]/ul/li/a/text()'
-path = constants.STOCK_LIST_FILE_DIR + datetime.date.today().strftime('%Y-%m-%d') + constants.STOCK_LIST_FILE_TYPE
+path = ct.constant.STOCK_LIST_FILE_DIR + datetime.date.today().strftime('%Y-%m-%d') + ct.constant.STOCK_LIST_FILE_TYPE
 
 
 # 获取网页内容
