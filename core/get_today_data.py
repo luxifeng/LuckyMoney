@@ -7,8 +7,7 @@
 
 import datetime
 import tushare as ts
-import pandas as pd
-from scripts import constants as ct
+from core import constants as ct
 
 today = datetime.date.today().strftime('%Y-%m-%d')
 
