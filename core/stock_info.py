@@ -67,16 +67,16 @@ class StockInfo:
             else:
                 stock_info.to_csv(file_path, header=True, index=False, encoding='utf-8')
             print("Successful load stock price: %s" % stock_code)
-            time.sleep(2)
+            time.sleep(3)
         except Exception as e:
             print("Failed to load stock price: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
             raise e
 
     def save_stock_info(self, from_file_path, to_dir_path):
         """
-        按个股保存个股数据，每只个股一个时序文件，日更
+        按个股保存个股数据，每只个股一个时序文件
         若无存在的数据，则从20000101开始获取至今的数据
-        若有存在的数据，则从最后数据的下一天开始获取
+        若有存在的数据，则从最后日期的下一天开始获取
         :param from_file_path: str
             path to read stock list
         :param to_dir_path: str
@@ -150,7 +150,19 @@ class StockInfo:
             else:
                 subset.to_csv(file_path, header=True, index=False, encoding='utf-8')
 
+    def save_stock_profit(self, from_file_path, to_file_path):
+        """
+        按个股保存利润数据
+        :param start_date:
+        :param end_date:
+        :param dir:
+        :return:
+        """
+        self._pro.query('income', ts_code='600000.SH', start_date='20180101', end_date='20180730',
+                  fields='ts_code,ann_date,f_ann_date,end_date,report_type,n_income')
+
+
 si = StockInfo()
 # si.save_stock_list(const.FILE_STOCK_LIST)
-# si.save_stock_info(const.FILE_STOCK_LIST, const.DIR_STOCK_INFO)
+si.save_stock_info(const.FILE_STOCK_LIST, const.DIR_STOCK_INFO)
 # si.save_daily_info('20190302', '20190302', const.DIR_STOCK_INFO)
