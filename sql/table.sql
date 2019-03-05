@@ -22,8 +22,8 @@ CREATE TABLE stock(
     float_share NUMERIC(10) COMMENT '流通股本(万)',
     total_mv NUMERIC(10) COMMENT '总市值(万)',
     circ_mv NUMERIC(10) COMMENT '流通市值(万)',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `stock_trade` (`ts_code`,`trade_date`)
+    PRIMARY KEY (id),
+    CONSTRAINT stock_trade UNIQUE (ts_code,trade_date)
 ) PARTITION BY RANGE(YEAR(trade_date))(
     PARTITION p0 VALUES LESS THAN (2006),
     PARTITION p0 VALUES LESS THAN (2011),
@@ -36,3 +36,19 @@ CREATE TABLE stock(
 -- 指数列表
 
 -- 指数成分与权重表
+DROP TABLE IF EXISTS index_weight
+CREATE TABLE index_weight(
+    id INT AUTO_INCREMENT COMMENT '自增id',
+    index_code VARCHAR(24) NOT NULL DEFAULT '000000' COMMENT '指数代码',
+    con_code VARCHAR(24) COMMENT '成分代码',
+    trade_date DATE NOT NULL DEFAULT '1970-01-01' COMMENT '交易日期',
+    weight NUMERIC(10) COMMENT '权重',
+    PRIMARY KEY (id)
+) PARTITION BY RANGE(YEAR(trade_date))(
+    PARTITION p0 VALUES LESS THAN (2006),
+    PARTITION p0 VALUES LESS THAN (2011),
+    PARTITION p0 VALUES LESS THAN (2016),
+    PARTITION p0 VALUES LESS THAN (2021),
+    PARTITION p0 VALUES LESS THAN (2026),
+    PARTITION p0 VALUES LESS THAN MAXVALUE
+);
