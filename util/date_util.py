@@ -44,7 +44,7 @@ def datetime_to_yyyymmdd(date):
     :param date: datetime
     """
     if isinstance(date, datetime):
-        return date.strftime(const.DATE_FORMAT_TWO)
+        return date.strftime(const.DATE_FORMAT_TUSHARE)
     raise Exception("Unexpected data type")
 
 
@@ -54,5 +54,5 @@ def yyyymmdd_to_datetime(yyyymmdd):
     :param date: datetime
     """
     if isinstance(yyyymmdd, str):
-        return datetime.strptime(yyyymmdd, const.DATE_FORMAT_TWO)
+        return datetime.strptime(yyyymmdd, const.DATE_FORMAT_TUSHARE)
     raise Exception("Unexpected data type")

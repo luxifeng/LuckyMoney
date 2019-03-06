@@ -1,22 +1,22 @@
 -- 个股列表
-DROP TABLE IF EXISTS stock_basic
+DROP TABLE IF EXISTS stock_basic;
 CREATE TABLE stock_basic(
-    id INT AUTO_INCREMENT COMMENT '自增id',
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '自增id',
     ts_code VARCHAR(24) NOT NULL UNIQUE DEFAULT '000000' COMMENT 'TS代码',
-    symbol VARCHAR(24) COMMENT '股票代码',
+    symbol VARCHAR(24) NOT NULL UNIQUE DEFAULT '000000' COMMENT '股票代码',
     name VARCHAR(128) COMMENT '股票名称',
     area VARCHAR(24) COMMENT '所在地域',
-    industry VARCHAR(128) COMMENT '股票全称',
+    industry VARCHAR(24) COMMENT '所属行业',
+    fullname VARCHAR(128) COMMENT '股票全称',
     enname VARCHAR(128) COMMENT '英文全称',
     market VARCHAR(24) COMMENT '市场类型',
     exchange VARCHAR(24) COMMENT '交易所代码',
     curr_type VARCHAR(24) COMMENT '交易货币',
-    list_status VARCHAR(24) COMMENT '上市状态：L上市 D退市 P暂停上市',
-    list_date VARCHAR(24) COMMENT '上市日期',
-    delist_date VARCHAR(24) COMMENT '退市日期',
-    is_hs VARCHAR(24) COMMENT '是否沪深港通标的，N否 H沪股通 S深股通',
-    PRIMARY KEY (id)
-)
+    list_status TINYINT COMMENT '上市状态：0上市 1退市 2暂停上市',
+    list_date DATE COMMENT '上市日期',
+    delist_date DATE COMMENT '退市日期',
+    is_hs TINYINT COMMENT '是否沪深港通标的，0否 1沪股通 2深股通'
+);
 
 -- 个股行情+指标
 DROP TABLE IF EXISTS stock_price

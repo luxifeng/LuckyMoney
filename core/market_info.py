@@ -34,7 +34,7 @@ class MarketInfo:
         :param file_path: str
             file path to save trade date
         """
-        now = datetime.now().strftime(const.DATE_FORMAT_TWO)
+        now = datetime.now().strftime(const.DATE_FORMAT_TUSHARE)
         try:
             trade_date = self._pro.query('trade_cal', exchange='', start_date='20000101', end_date=now)
             trade_date.to_csv(file_path, header=True, index=False)
@@ -49,7 +49,7 @@ class MarketInfo:
         :param date: datetime or str
         """
         if isinstance(date, datetime):
-            ndate = date.strftime(const.DATE_FORMAT_TWO)
+            ndate = date.strftime(const.DATE_FORMAT_TUSHARE)
         elif isinstance(date, str):
             ndate = date
         else:

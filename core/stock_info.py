@@ -13,8 +13,13 @@ import pandas as pd
 from datetime import datetime
 from core.market_info import MarketInfo
 from common.constant import const
-from sqlalchemy import engine
+from sqlalchemy import create_engine
 import util.date_util as du
+
+enum_to_int = {
+    "list_status": {"L": 0, "D": 1, "P": 2},  # 上市状态
+    "is_hs": {"N": 0, "H": 1, "S": 2}  # 是否沪深港通
+}
 
 
 class StockInfo:
@@ -25,25 +30,42 @@ class StockInfo:
         # init api
         self._pro = ts.pro_api()
 
-    def save_stock_list(self, file_path):
+    def save_stock_list(self):
         """
-        保存上市股票信息（TS代码、股票代码、股票名称、地区、行业、市场类型、上市状态、上市日期、退市日期、沪深港通标记）
+        保存上市股票信息
         该接口只有上市股票数据，没有退市股票数据
-        与已存在的数据合并，保持一份最新
+        替换已存在数据，保持一份最新
         :param file_path: str
             file path to save stocks info
         """
-        fields = 'ts_code,symbol,name,area,industry,market,list_status,list_date,delist_date,is_hs'
+        pro_query = 'stock_basic'
+        pro_fields = 'ts_code,symbol,name,area,industry,fullname,enname,market,' \
+                     'exchange,curr_type,list_status,list_date,delist_date,is_hs'
+        sql_table = 'stock_basic'
         try:
-            stock_list = self._pro.query('stock_basic', exchange='', fields=fields)
-            if os.path.exists(file_path):
-                exist_stock_list = pd.read_csv(file_path, encoding='utf-8')
-                stock_list = stock_list.append(exist_stock_list)
-                stock_list.drop_duplicates()
-            stock_list.to_csv(file_path, header=True, index=False, encoding='utf-8')
-            print("Successfully load stock list")
+            # create sql connection
+            engine = create_engine(const.MYSQL_CONN)
+            # ts_code to drop
+            stock_exist = pd.read_sql("SELECT ts_code FROM %s" % sql_table, engine)
+            ts_code_drop = stock_exist['ts_code']
+            # load data from tushare
+            stock_list = self._pro.query(pro_query, fields=pro_fields)
+            # difference set
+            flag = stock_list['ts_code'].isin(ts_code_drop)
+            diff_flag = [not f for f in flag]
+            stock_list = stock_list[diff_flag]
+            stock_list.replace(to_replace=enum_to_int, inplace=True)
+            stock_list['list_date'] = pd.to_datetime(stock_list['list_date'],
+                                                     format=const.DATE_FORMAT_TUSHARE,
+                                                     errors='coerce')
+            stock_list['delist_date'] = pd.to_datetime(stock_list['delist_date'],
+                                                       format=const.DATE_FORMAT_TUSHARE,
+                                                       errors='coerce')
+            # insert newest records
+            pd.io.sql.to_sql(stock_list, sql_table, con=engine, if_exists='append', index=False, chunksize=5000)
+            print("Successfully load stock list: %d" % stock_list.shape[0])
         except Exception as e:
-            print("Failed to load stock list")
+            print(e)
             return False
 
     def _append_stock_info(self, stock_code, start_date, end_date, file_path):
@@ -160,10 +182,10 @@ class StockInfo:
         :return:
         """
         self._pro.query('income', ts_code='600000.SH', start_date='20180101', end_date='20180730',
-                  fields='ts_code,ann_date,f_ann_date,end_date,report_type,n_income')
+                        fields='ts_code,ann_date,f_ann_date,end_date,report_type,n_income')
 
 
 si = StockInfo()
-# si.save_stock_list(const.FILE_STOCK_LIST)
-si.save_stock_info(const.FILE_STOCK_LIST, const.DIR_STOCK_INFO)
+si.save_stock_list()
+# si.save_stock_info(const.FILE_STOCK_LIST, const.DIR_STOCK_INFO)
 # si.save_daily_info('20190302', '20190302', const.DIR_STOCK_INFO)
