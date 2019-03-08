@@ -21,7 +21,7 @@ CREATE TABLE stock_basic(
 -- 个股行情+指标
 DROP TABLE IF EXISTS stock_price
 CREATE TABLE stock_price (
-    id INT AUTO_INCREMENT COMMENT '自增id',
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '自增id',
     ts_code VARCHAR(24) NOT NULL DEFAULT '000000' COMMENT '股票代码',
     trade_date DATE NOT NULL DEFAULT '1970-01-01' COMMENT '交易日期',
     trade_time TIME  COMMENT '交易时间',
@@ -29,17 +29,16 @@ CREATE TABLE stock_price (
     high DECIMAL(18, 4) NOT NULL COMMENT '最高价',
     low DECIMAL(18, 4) NOT NULL COMMENT '最低价',
     close DECIMAL(18, 4) NOT NULL COMMENT '收盘价',
-    vol BIGINT COMMENT '成交量',
-    amount NUMERIC(10) COMMENT '成交额',
-    pe NUMERIC(10) COMMENT '市盈率',
-    pe_ttm NUMERIC(10) COMMENT 'tushare滚动市盈率',
-    pe_ttm_my NUMERIC(10) COMMENT '我的滚动市盈率',
-    pb NUMERIC(10) COMMENT '市净率',
-    total_share NUMERIC(10) COMMENT '总股本(万)',
-    float_share NUMERIC(10) COMMENT '流通股本(万)',
-    total_mv NUMERIC(10) COMMENT '总市值(万)',
-    circ_mv NUMERIC(10) COMMENT '流通市值(万)',
-    PRIMARY KEY (id),
+    vol DECIMAL(18, 4) COMMENT '成交量',
+    amount DECIMAL(18, 4) COMMENT '成交额',
+    pe DECIMAL(18, 4) COMMENT '市盈率',
+    pe_ttm DECIMAL(18, 4) COMMENT 'tushare滚动市盈率',
+    pe_ttm_my DECIMAL(18, 4) COMMENT '我的滚动市盈率',
+    pb DECIMAL(18, 4) COMMENT '市净率',
+    total_share DECIMAL(18, 4) COMMENT '总股本(万)',
+    float_share DECIMAL(18, 4) COMMENT '流通股本(万)',
+    total_mv DECIMAL(18, 4) COMMENT '总市值(万)',
+    circ_mv DECIMAL(18, 4) COMMENT '流通市值(万)',
     CONSTRAINT stock_trade UNIQUE (ts_code,trade_date)
 ) PARTITION BY RANGE(YEAR(trade_date))(
     PARTITION p0 VALUES LESS THAN (2006),

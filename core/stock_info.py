@@ -16,6 +16,7 @@ from common.constant import const
 from sqlalchemy import create_engine
 import util.date_util as du
 
+
 enum_to_int = {
     "list_status": {"L": 0, "D": 1, "P": 2},  # 上市状态
     "is_hs": {"N": 0, "H": 1, "S": 2}  # 是否沪深港通
@@ -35,25 +36,24 @@ class StockInfo:
         保存上市股票信息
         该接口只有上市股票数据，没有退市股票数据
         替换已存在数据，保持一份最新
-        :param file_path: str
-            file path to save stocks info
         """
-        pro_query = 'stock_basic'
-        pro_fields = 'ts_code,symbol,name,area,industry,fullname,enname,market,' \
+        query_stock_basic = 'stock_basic'
+        fields_stock_basic = 'ts_code,symbol,name,area,industry,fullname,enname,market,' \
                      'exchange,curr_type,list_status,list_date,delist_date,is_hs'
-        sql_table = 'stock_basic'
+        table_stock_basic = 'stock_basic'
         try:
             # create sql connection
             engine = create_engine(const.MYSQL_CONN)
             # ts_code to drop
-            stock_exist = pd.read_sql("SELECT ts_code FROM %s" % sql_table, engine)
+            stock_exist = pd.read_sql("SELECT ts_code FROM %s" % table_stock_basic, engine)
             ts_code_drop = stock_exist['ts_code']
             # load data from tushare
-            stock_list = self._pro.query(pro_query, fields=pro_fields)
+            stock_list = self._pro.query(query_stock_basic, fields=fields_stock_basic)
             # difference set
             flag = stock_list['ts_code'].isin(ts_code_drop)
             diff_flag = [not f for f in flag]
             stock_list = stock_list[diff_flag]
+            # type conversion
             stock_list.replace(to_replace=enum_to_int, inplace=True)
             stock_list['list_date'] = pd.to_datetime(stock_list['list_date'],
                                                      format=const.DATE_FORMAT_TUSHARE,
@@ -61,14 +61,14 @@ class StockInfo:
             stock_list['delist_date'] = pd.to_datetime(stock_list['delist_date'],
                                                        format=const.DATE_FORMAT_TUSHARE,
                                                        errors='coerce')
-            # insert newest records
-            pd.io.sql.to_sql(stock_list, sql_table, con=engine, if_exists='append', index=False, chunksize=5000)
+            # insert new records
+            pd.io.sql.to_sql(stock_list, table_stock_basic, con=engine, if_exists='append', index=False, chunksize=5000)
             print("Successfully load stock list: %d" % stock_list.shape[0])
         except Exception as e:
             print(e)
             return False
 
-    def _append_stock_info(self, stock_code, start_date, end_date, file_path):
+    def _append_stock_price(self, stock_code, start_date, end_date):
         """
         保存股票行情数据和指标
         :param stock_code: str
@@ -77,25 +77,39 @@ class StockInfo:
             example: '20180101'
         :param end_date: str
             example: '20180101'
-        :param file_path: str
-            file path to save stock
         """
+        query_stock_price = 'daily'
+        fields_stock_price = 'ts_code,trade_date,open,high,low,close,vol,amount'
+        query_stock_indication = 'daily_basic'
+        fields_stock_indication = 'ts_code,trade_date,pe,pe_ttm,pb,total_share,float_share,total_mv,circ_mv'
+        table_stock_price = 'stock_price'
+        table_stock_profit = 'stock_profit'
+        sql_stock_profit = 'SELECT FROM %s WHERE ts_code=\'%s\'' % (table_stock_profit, stock_code)
         try:
-            stock_price = self._pro.query('daily', ts_code=stock_code, start_date=start_date, end_date=end_date)
-            stock_basic = self._pro.query('daily_basic', ts_code=stock_code, start_date=start_date, end_date=end_date,
-                                          fields='ts_code,trade_date,pe,pe_ttm,pb,total_share,float_share,total_mv,circ_mv')
+            # create sql connection
+            engine = create_engine(const.MYSQL_CONN)
+            # load data from tushare and then merge
+            stock_price = self._pro.query(query_stock_price, ts_code=stock_code, start_date=start_date, end_date=end_date,
+                                          fields=fields_stock_price)
+            stock_basic = self._pro.query(query_stock_indication, ts_code=stock_code, start_date=start_date, end_date=end_date,
+                                          fields=fields_stock_indication)
             stock_info = pd.merge(stock_price, stock_basic, how='left', on=['ts_code', 'trade_date'])
-            if os.path.exists(file_path):
-                stock_info.to_csv(file_path, header=False, index=False, mode='a', encoding='utf-8')
-            else:
-                stock_info.to_csv(file_path, header=True, index=False, encoding='utf-8')
+            # my pe-ttm
+            stock_profit = pd.read_sql(sql_stock_profit, con=engine)
+
+            stock_info['pe_ttm_my'] = stock_info['close'] * stock_info['total_share'] / ()
+            # type conversion
+            stock_info['trade_date'] = pd.to_datetime(stock_info['trade_date'],
+                                                     format=const.DATE_FORMAT_TUSHARE,
+                                                     errors='coerce')
+            pd.io.sql.to_sql(stock_info, table_stock_price, con=engine, if_exists='append', index=False, chunksize=5000)
             print("Successful load stock price: %s" % stock_code)
             time.sleep(3)
         except Exception as e:
             print("Failed to load stock price: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
             raise e
 
-    def save_stock_info(self, from_file_path, to_dir_path):
+    def save_stock_price(self, from_file_path, to_dir_path):
         """
         按个股保存个股数据，每只个股一个时序文件
         若无存在的数据，则从20000101开始获取至今的数据
@@ -173,7 +187,17 @@ class StockInfo:
             else:
                 subset.to_csv(file_path, header=True, index=False, encoding='utf-8')
 
-    def save_stock_profit(self, from_file_path, to_file_path):
+    def _append_stock_profit(self, stock_code, start_date, end_date):
+        query_stock_profit = 'income'
+        fields_stock_profit = 'ts_code,ann_date,f_ann_date,end_date,report_type,n_income'
+        table_stock_profit = 'stock_profit'
+        try:
+            self._pro.query(query_stock_profit, ts_code=stock_code, start_date=start_date, end_date=end_date,
+                        fields=fields_stock_profit)
+        except Exception as e:
+            raise e
+
+    def save_stock_profit(self):
         """
         按个股保存利润数据
         :param start_date:
