@@ -7,20 +7,20 @@
 
 import calendar
 from common.constant import const
-from _datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 
-def get_first_day_of_next_month(date):
+def get_first_day_of_next_month(my_date):
     """
     获取下个月的第一天
     :param date: datetime
     """
-    if isinstance(date, datetime):
-        first_day = datetime(date.year, date.month, 1)
+    if isinstance(my_date, (datetime, date)):
+        first_day = datetime(my_date.year, my_date.month, 1)
         days_num = calendar.monthrange(first_day.year, first_day.month)[1]
         first_day_of_next_month = first_day + timedelta(days=days_num)
         return first_day_of_next_month
-    raise Exception("Unexpected data type")
+    raise Exception("Unexpected data type: %s", type(my_date))
 
 
 def get_next_day(date):
@@ -51,8 +51,19 @@ def datetime_to_yyyymmdd(date):
 def yyyymmdd_to_datetime(yyyymmdd):
     """
     yyyymmdd str转datetime
-    :param date: datetime
+    :param yyyymmdd str
     """
     if isinstance(yyyymmdd, str):
         return datetime.strptime(yyyymmdd, const.DATE_FORMAT_TUSHARE)
+    raise Exception("Unexpected data type")
+
+def yyyy_mm_dd_to_datetime(yyyy_mm_dd):
+    """
+        yyyy_mm_dd str转datetime
+        :param yyyy_mm_dd: str
+        """
+    if yyyy_mm_dd:
+        return None
+    if isinstance(yyyy_mm_dd, str):
+        return datetime.strptime(yyyy_mm_dd, const.DATE_FORMAT_ONE)
     raise Exception("Unexpected data type")

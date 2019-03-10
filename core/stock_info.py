@@ -136,7 +136,7 @@ class StockInfo:
                     start_date = du.datetime_to_yyyymmdd(next_day)
                 else:
                     continue
-            self._append_stock_info(item, start_date=start_date, end_date=end_date, file_path=file_path)
+            self._append_stock_price(item, start_date=start_date, end_date=end_date)
 
     def _append_daily_info(self, date, dir):
         """
@@ -188,28 +188,99 @@ class StockInfo:
                 subset.to_csv(file_path, header=True, index=False, encoding='utf-8')
 
     def _append_stock_profit(self, stock_code, start_date, end_date):
-        query_stock_profit = 'income'
-        fields_stock_profit = 'ts_code,ann_date,f_ann_date,end_date,report_type,n_income'
-        table_stock_profit = 'stock_profit'
-        try:
-            self._pro.query(query_stock_profit, ts_code=stock_code, start_date=start_date, end_date=end_date,
-                        fields=fields_stock_profit)
-        except Exception as e:
-            raise e
-
-    def save_stock_profit(self):
         """
         按个股保存利润数据
-        :param start_date:
-        :param end_date:
-        :param dir:
-        :return:
+        :param stock_code: str
+        :param start_date: str
+        :param end_date: str
         """
-        self._pro.query('income', ts_code='600000.SH', start_date='20180101', end_date='20180730',
-                        fields='ts_code,ann_date,f_ann_date,end_date,report_type,n_income')
+        query_stock_profit = 'income'
+        fields_stock_profit = 'ts_code,ann_date,f_ann_date,end_date,report_type,basic_eps,diluted_eps,' \
+                              'total_revenue,operate_profit,total_profit,income_tax,n_income,n_income_attr_p'
+        table_stock_profit = 'stock_profit'
+        try:
+            # create sql connection
+            engine = create_engine(const.MYSQL_CONN)
+            # stock profit exit
+            stock_profit = self._pro.query(query_stock_profit, ts_code=stock_code, start_date=start_date,
+                                           end_date=end_date, fields=fields_stock_profit)
+            # type conversion
+            stock_profit['ann_date'] = pd.to_datetime(stock_profit['ann_date'],
+                                                     format=const.DATE_FORMAT_TUSHARE,
+                                                     errors='coerce')
+            stock_profit['f_ann_date'] = pd.to_datetime(stock_profit['f_ann_date'],
+                                                       format=const.DATE_FORMAT_TUSHARE,
+                                                       errors='coerce')
+            stock_profit['end_date'] = pd.to_datetime(stock_profit['end_date'],
+                                                         format=const.DATE_FORMAT_TUSHARE,
+                                                         errors='coerce')
+            # insert latest records
+            if stock_profit.shape[0] > 0:
+                pd.io.sql.to_sql(stock_profit, table_stock_profit, con=engine, if_exists='append', index=False, chunksize=5000)
+                print("Successfully load stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
+            else:
+                print("No stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
+            time.sleep(5)
+        except Exception as e:
+            print("Failed to load stock profit: %s" % stock_code)
+            raise e
+
+    def save_stock_profit(self, start_date, end_date):
+        """
+        按个股保存利润数据
+        个股列表来自数据库
+        :param start_date: str
+            如'20181201'
+        :param end_date: str
+            如'20181201'
+        """
+        sql_stock_list = 'SELECT ts_code FROM stock_basic'
+        sql_stock_profit = 'SELECT ts_code, MAX(f_ann_date) AS date FROM stock_profit GROUP BY ts_code'
+        try:
+            # create sql connection
+            engine = create_engine(const.MYSQL_CONN)
+            # load stock list
+            stock_list = pd.read_sql(sql_stock_list, con=engine)
+            # iterate
+            for stock_code in stock_list['ts_code']:
+                self._append_stock_profit(stock_code, start_date=start_date, end_date=end_date)
+        except Exception as e:
+            print(e)
+
+    def save_stock_profit_auto(self):
+        """
+        按个股保存利润数据
+        个股列表来自数据库
+        起始时间为数据库中group by stock_code的max(实际公布日期)的下个月
+        结束时间为今日
+        """
+        sql_stock_list = 'SELECT ts_code FROM stock_basic'
+        sql_stock_profit = 'SELECT ts_code, MAX(f_ann_date) AS date FROM stock_profit GROUP BY ts_code'
+        try:
+            # create sql connection
+            engine = create_engine(const.MYSQL_CONN)
+            # load historic data
+            max_date = {}
+            profit_hist = pd.read_sql_query(sql_stock_profit, con=engine)
+            for row in profit_hist.iterrows():
+                max_date[row[1]['ts_code']] = row[1]['date']
+            # load stock list
+            stock_list = pd.read_sql(sql_stock_list, con=engine)
+            # iterate
+            for stock_code in stock_list['ts_code']:
+                start_date = max_date.get(stock_code, None)
+                end_date = du.datetime_to_yyyymmdd(datetime.now())
+                if not start_date is None:
+                    start_date = du.datetime_to_yyyymmdd(du.get_first_day_of_next_month(start_date))
+                    if start_date > end_date:
+                        continue
+                self._append_stock_profit(stock_code, start_date=start_date, end_date=end_date)
+        except Exception as e:
+            print(e)
 
 
 si = StockInfo()
-si.save_stock_list()
+# si.save_stock_list()
 # si.save_stock_info(const.FILE_STOCK_LIST, const.DIR_STOCK_INFO)
 # si.save_daily_info('20190302', '20190302', const.DIR_STOCK_INFO)
+si.save_stock_profit_auto()
