@@ -47,6 +47,16 @@ def datetime_to_yyyymmdd(date):
         return date.strftime(const.DATE_FORMAT_TUSHARE)
     raise Exception("Unexpected data type")
 
+def datetime_to_yyyy_mm_dd(date):
+    """
+    date转yyyy-mm-dd str
+    :param date: datetime
+    """
+    if isinstance(date, datetime):
+        return date.strftime(const.DATE_FORMAT_ONE)
+    raise Exception("Unexpected data type")
+
+
 
 def yyyymmdd_to_datetime(yyyymmdd):
     """
@@ -67,3 +77,5 @@ def yyyy_mm_dd_to_datetime(yyyy_mm_dd):
     if isinstance(yyyy_mm_dd, str):
         return datetime.strptime(yyyy_mm_dd, const.DATE_FORMAT_ONE)
     raise Exception("Unexpected data type")
+
+

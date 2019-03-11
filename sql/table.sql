@@ -32,7 +32,6 @@ CREATE TABLE stock_price (
     amount DECIMAL(18, 4) COMMENT '成交额',
     pe DECIMAL(18, 4) COMMENT '市盈率',
     pe_ttm DECIMAL(18, 4) COMMENT 'tushare滚动市盈率',
-    pe_ttm_my DECIMAL(18, 4) COMMENT '我的滚动市盈率',
     pb DECIMAL(18, 4) COMMENT '市净率',
     total_share DECIMAL(18, 4) COMMENT '总股本(万)',
     float_share DECIMAL(18, 4) COMMENT '流通股本(万)',

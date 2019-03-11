@@ -28,20 +28,16 @@ class MarketInfo:
         # init api
         self._pro = ts.pro_api()
 
-    def save_all_trade_date(self, file_path):
+    def get_all_trade_date(self):
         """
-        保存交易日期，2000年1月1日至今
-        :param file_path: str
-            file path to save trade date
+        获取交易日期，2000年1月1日至今
         """
         now = datetime.now().strftime(const.DATE_FORMAT_TUSHARE)
         try:
             trade_date = self._pro.query('trade_cal', exchange='', start_date='20000101', end_date=now)
-            trade_date.to_csv(file_path, header=True, index=False)
-            return True
+            return trade_date
         except Exception as e:
             logger.error(e)
-            return False
 
     def is_trade_date(self, date):
         """
