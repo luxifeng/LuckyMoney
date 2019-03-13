@@ -5,14 +5,10 @@
 @time: 2019/03/03
 """
 
-import logging
-import os
 import time
-import tushare as ts
 import pandas as pd
 from datetime import datetime
 from core.market_info import MarketInfo
-from common.constant import const
 from util.dateutil import dateutil
 from util.dbutil import dbutil
 from util.tsutil import tsutil
@@ -59,12 +55,13 @@ class StockInfo:
         :param trade_date: str / datetime
             example: '20190101'
         """
+        trade_date_tmp = trade_date
         if isinstance(trade_date, str):
-            trade_date = dateutil.tsformat_to_datetime(trade_date)
+            trade_date_tmp = dateutil.tsformat_to_datetime(trade_date)
         if isinstance(trade_date, datetime):
-            trade_date = dateutil.datetime_to_dbformat(trade_date)
+            trade_date_tmp = dateutil.datetime_to_dbformat(trade_date)
         table_stock_price = 'stock_price'
-        sql_stock_price = "SELECT count(1) AS count FROM stock_price WHERE trade_date='%s'" % trade_date
+        sql_stock_price = "SELECT count(1) AS count FROM stock_price WHERE trade_date='%s'" % trade_date_tmp
         try:
             # check if data exists
             res = dbutil.read_df(sql_stock_price)
@@ -107,7 +104,7 @@ class StockInfo:
                 print("Not a trade date: %s" % date_iterator)
             else:
                 self._append_daily_info(date_iterator)
-            date_iterator = dateutil.get_next_day(date_iterator)
+            date_iterator = dateutil.datetime_to_tsformat(dateutil.get_next_day(date_iterator))
         if len(frames) == 0:
             return
 

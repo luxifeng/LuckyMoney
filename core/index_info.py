@@ -7,13 +7,12 @@
 @time: 2019/03/02
 """
 
-import logging
 import os
-import tushare as ts
 import pandas as pd
 import time
 from datetime import datetime
 from common.constant import const
+from core.market_info import MarketInfo
 from util.dateutil import dateutil
 from util.dbutil import dbutil
 from util.tsutil import tsutil
@@ -41,69 +40,64 @@ class IndexInfo:
             print("Failed to load index list")
             raise e
 
-    def _append_index_component(self, index_code, start_date, end_date, file_path):
+    def _append_index_component_daily(self, trade_date):
         """
-        保存或追加某只指数的成分股
+        保存或追加某日指数的成分股
         每分钟最多访问该接口70次
-        :param index_code: str
-            example: 399300.SZ
-        :param start_date: str
+        :param trade_date: str
             example: 20190101
-        :param end_date: str
-            example: 20190101
-        :param file_path: str
-            example: ../data/index/component/111.dz.csv
-        :return: bool
         """
+        trade_date_tmp = trade_date
+        if isinstance(trade_date, str):
+            trade_date_tmp = dateutil.tsformat_to_datetime(trade_date)
+        if isinstance(trade_date, datetime):
+            trade_date_tmp = dateutil.datetime_to_dbformat(trade_date)
+        table_index_comp = 'index_comp'
+        sql_index_comp = "SELECT count(1) AS count FROM index_comp WHERE trade_date='%s'" % trade_date_tmp
         try:
-            index_comp = self._
-            if os.path.exists(file_path):
-                index_comp.to_csv(file_path, header=False, index=False, mode='a', encoding='utf-8')
+            # check if data exists
+            res = dbutil.read_df(sql_index_comp)
+            count = res['count'].iloc[0]
+            if count > 0:
+                print("Daily price exists: %s" % trade_date)
+                return
+            # load date
+            index_comp = tsutil.query_index_component_daily(trade_date)
+            # save
+            if index_comp.shape[0] > 0:
+                dbutil.save_df(index_comp, table_index_comp)
+                print("Successful load daily index component: %s" % trade_date)
             else:
-                index_comp.to_csv(file_path, header=True, index=False, encoding='utf-8')
-            print("Successfully load index component: %s" % index_code)
-            time.sleep(10)
+                print("No data: %s" % trade_date)
+            time.sleep(2)
         except Exception as e:
-            print("Failed to load index componenet: %s, start: %s, end: %s" % (index_code, start_date, end_date))
+            print("Failed to load daily index component: %s" % trade_date)
             raise e
 
-    def save_index_stock_component(self, from_file_path, to_dir_path):
+    def save_index_stock_component(self, start_date, end_date):
         """
-        保存指数成分，按指数代码保存一份最新，月更
-        若无存在的数据，则从20000101开始获取至今的数据
-        若有存在的数据，则从最后数据的下个月第一天开始获取
-        :param from_file_path: str
-            path to read index list
-        :param to_dir_path: str
-            path to save index component info
+        保存指数成分
         :param start_date: str
-            start date
         :param end_date: str
-            end date
         """
-        start_date = const.DATE_START
-        end_date = du.datetime_to_yyyymmdd(datetime.now())
-        try:
-            index_list = pd.read_csv(from_file_path, encoding='utf-8')
-            index_code = index_list['ts_code']
-            for item in index_code:
-                file_path = to_dir_path + item + const.CSV_EXTENSION
-                if os.path.exists(file_path):
-                    index_comp_series = pd.read_csv(file_path, encoding='utf-8')
-                    last_trade_date = str(index_comp_series['trade_date'].max())
-                    if last_trade_date.lower() == 'nan':
-                        start_date = const.DATE_START
-                    elif end_date[0:6] != last_trade_date[0:6]:
-                        start_date_tmp = du.yyyymmdd_to_datetime(last_trade_date)
-                        first_day_of_next_month = du.get_first_day_of_next_month(start_date_tmp)
-                        start_date = du.datetime_to_yyyymmdd(first_day_of_next_month)
-                    else:
-                        continue
-                self._append_index_component(item, start_date=start_date, end_date=end_date, file_path=file_path)
-        except Exception as e:
-            raise e
+        date_iterator = start_date
+        mi = MarketInfo()
+        all_trade_date = mi.get_all_trade_date()
+        trade_date_dict = {}
+        for row in all_trade_date.iterrows():
+            trade_date_dict[row[1]['cal_date']] = row[1]['is_open']
+        frames = []
+        while int(date_iterator) <= int(end_date):
+            is_open = trade_date_dict.get(date_iterator, 0)
+            if is_open == 0:
+                print("Not a trade date: %s" % date_iterator)
+            else:
+                self._append_index_component_daily(date_iterator)
+            date_iterator = dateutil.datetime_to_tsformat(dateutil.get_next_day(date_iterator))
+        if len(frames) == 0:
+            return
 
 
 ii = IndexInfo()
 # ii.save_index_list(const.FILE_INDEX_LIST)
-ii.save_index_stock_component(const.FILE_INDEX_LIST, const.DIR_INDEX_COMP)
+ii.save_index_stock_component('20000101', '20091231')
