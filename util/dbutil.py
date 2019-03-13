@@ -28,5 +28,3 @@ class dbutil:
         读取数据库数据到dataframe
         """
         return pd.read_sql_query(sql, con=cls.engine)
-
-    def read

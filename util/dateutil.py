@@ -30,62 +30,60 @@ class dateutil:
         raise Exception("Unexpected data type: %s", type(my_date))
 
     @classmethod
-    def get_next_day(cls, date):
+    def get_next_day(cls, my_date):
         """
         获取下一天
-        :param date: datetime / str
+        :param my_date: datetime / str
         """
-        if isinstance(date, datetime):
-            next_day = date + timedelta(days=1)
+        if isinstance(my_date, datetime):
+            next_day = my_date + timedelta(days=1)
             return next_day
-        if isinstance(date, str):
-            date_tmp = cls.yyyymmdd_to_datetime(date)
+        if isinstance(my_date, str):
+            date_tmp = cls.tsformat_to_datetime(my_date)
             next_day = date_tmp + timedelta(days=1)
-            return cls.datetime_to_yyyymmdd(next_day)
+            return next_day
         raise Exception("Unexpected data type")
 
     @classmethod
-    def datetime_to_yyyymmdd(cls, date):
+    def datetime_to_tsformat(cls, my_date):
         """
         date转yyyymmdd str
-        :param date: datetime
+        :param my_date: datetime
         """
-        if isinstance(date, datetime):
-            return date.strftime(cls.DATE_FORMAT_TUSHARE)
+        if isinstance(my_date, datetime):
+            return my_date.strftime(cls.DATE_FORMAT_TUSHARE)
         raise Exception("Unexpected data type")
 
     @classmethod
-    def datetime_to_yyyy_mm_dd(cls, date):
+    def datetime_to_dbformat(cls, my_date):
         """
         date转yyyy-mm-dd str
-        :param date: datetime
+        :param my_date: datetime
         """
-        if isinstance(date, datetime):
-            return date.strftime(const.DATE_FORMAT_ONE)
+        if isinstance(my_date, datetime):
+            return my_date.strftime(const.DATE_FORMAT_ONE)
         raise Exception("Unexpected data type")
 
     @classmethod
-    def yyyymmdd_to_datetime(cls, yyyymmdd):
+    def tsformat_to_datetime(cls, my_date):
         """
         yyyymmdd str转datetime
-        :param yyyymmdd str
+        :param my_date str
         """
-        if isinstance(yyyymmdd, str):
-            return datetime.strptime(yyyymmdd, const.DATE_FORMAT_TUSHARE)
+        if isinstance(my_date, str):
+            return datetime.strptime(my_date, const.DATE_FORMAT_TUSHARE)
         raise Exception("Unexpected data type")
 
     @classmethod
-    def yyyy_mm_dd_to_datetime(cls, yyyy_mm_dd):
+    def dbformat_to_datetime(cls, my_date):
         """
             yyyy_mm_dd str转datetime
-            :param yyyy_mm_dd: str
+            :param my_date: str
             """
-        if yyyy_mm_dd:
-            return None
-        if isinstance(yyyy_mm_dd, str):
-            return datetime.strptime(yyyy_mm_dd, const.DATE_FORMAT_ONE)
+        if isinstance(my_date, str):
+            return datetime.strptime(my_date, const.DATE_FORMAT_ONE)
         raise Exception("Unexpected data type")
 
     @classmethod
-    def tushare_date_to_datetime(cls, col):
-        pd.to_datetime(col, format=const.DATE_FORMAT_TUSHARE, errors='coerce')
+    def tsformat_col_to_datetime(cls, col):
+        return pd.to_datetime(col, format=const.DATE_FORMAT_TUSHARE, errors='coerce')

@@ -12,19 +12,14 @@ import os
 import tushare as ts
 import pandas as pd
 import time
-import math
 from datetime import datetime
 from common.constant import const
-import util.date_util as du
+from util.dateutil import dateutil
+from util.dbutil import dbutil
+from util.tsutil import tsutil
 
 
 class IndexInfo:
-
-    def __init__(self):
-        # pro token
-        ts.set_token(const.TS_TOKEN)
-        # init api
-        self._pro = ts.pro_api()
 
     def save_index_list(self, file_path):
         """
@@ -34,16 +29,13 @@ class IndexInfo:
             path to save index list
         :return bool
         """
+        table_index_list = "index_basic"
         try:
-            index_list_csi = self._pro.query('index_basic', market='CSI')
-            index_list_sse = self._pro.query('index_basic', market='SSE')
-            index_list_szse = self._pro.query('index_basic', market='SZSE')
+            index_list_csi = tsutil.query_index_list("CSI")
+            index_list_sse = tsutil.query_index_list('SSE')
+            index_list_szse = tsutil.query_index_list('SZSE')
             index_list = index_list_csi.append([index_list_sse, index_list_szse])
-            if os.path.exists(file_path):
-                exist_index_list = pd.read_csv(file_path, encoding='utf-8')
-                index_list = index_list.append(exist_index_list)
-                index_list.drop_duplicates()
-            index_list.to_csv(file_path, header=True, index=False, encoding='utf-8')
+            dbutil.save_df(index_list, table_index_list)
             print("Successfully load index list")
         except Exception as e:
             print("Failed to load index list")
@@ -64,8 +56,7 @@ class IndexInfo:
         :return: bool
         """
         try:
-            index_comp = self._pro.query('index_weight', index_code=index_code, start_date=start_date,
-                                         end_date=end_date)
+            index_comp = self._
             if os.path.exists(file_path):
                 index_comp.to_csv(file_path, header=False, index=False, mode='a', encoding='utf-8')
             else:

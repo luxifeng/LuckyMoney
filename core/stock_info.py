@@ -37,17 +37,15 @@ class StockInfo:
             stock_exist = dbutil.read_df("SELECT ts_code FROM %s" % table_stock_basic)
             ts_code_drop = stock_exist['ts_code']
             # load data from tushare
-            stock_list = tsutil.query_stock_basic()
+            stock_list = tsutil.query_stock_list()
             # difference set
             flag = stock_list['ts_code'].isin(ts_code_drop)
             diff_flag = [not f for f in flag]
             stock_list = stock_list[diff_flag]
             # type conversion
             stock_list.replace(to_replace=enum_to_int, inplace=True)
-            stock_list['list_date'] = dateutil.col_to_datetime()
-            stock_list['delist_date'] = pd.to_datetime(stock_list['delist_date'],
-                                                       format=const.DATE_FORMAT_TUSHARE,
-                                                       errors='coerce')
+            stock_list['list_date'] = dateutil.tsformat_col_to_datetime(stock_list['list_date'])
+            stock_list['delist_date'] = dateutil.tsformat_col_to_datetime(stock_list['delist_date'])
             # insert new records
             dbutil.save_df(stock_list, table_stock_basic)
             print("Successfully load stock list: %d" % stock_list.shape[0])
@@ -55,36 +53,35 @@ class StockInfo:
             print(e)
             return False
 
-    def _append_daily_info(self, yyyymmdd):
+    def _append_daily_info(self, trade_date):
         """
         保存每日行情数据和指标
-        :param yyyymmdd: str
+        :param trade_date: str / datetime
             example: '20190101'
         """
-        query_price_daily = 'daily'
-        fields_price_daily = 'ts_code,trade_date,open,high,low,close,vol,amount'
-        query_basic_daily = 'daily_basic'
-        fields_basic_daily = 'ts_code,trade_date,pe,pe_ttm,pb,total_share,float_share,total_mv,circ_mv'
+        if isinstance(trade_date, str):
+            trade_date = dateutil.tsformat_to_datetime(trade_date)
+        if isinstance(trade_date, datetime):
+            trade_date = dateutil.datetime_to_dbformat(trade_date)
         table_stock_price = 'stock_price'
-        sql_stock_price = "SELECT count(1) AS count FROM stock_price WHERE trade_date='%s'" % \
-                          dateutil.datetime_to_yyyy_mm_dd(dateutil.yyyymmdd_to_datetime(yyyymmdd))
+        sql_stock_price = "SELECT count(1) AS count FROM stock_price WHERE trade_date='%s'" % trade_date
         try:
             # check if data exists
-            res = pd.read_sql_query(sql_stock_price, con=self._engine)
+            res = dbutil.read_df(sql_stock_price)
             count = res['count'].iloc[0]
             if count > 0:
-                print("Daily price exists: %s" % yyyymmdd)
+                print("Daily price exists: %s" % trade_date)
                 return
             # load date
-            price_daily = self._pro.query(query_price_daily, trade_date=yyyymmdd, fields=fields_price_daily)
-            basic_daily = self._pro.query(query_basic_daily, trade_date=yyyymmdd, fields=fields_basic_daily)
+            price_daily = tsutil.query_stock_price_daily(trade_date)
+            basic_daily = tsutil.query_stock_basic_daily(trade_date)
             info_daily = pd.merge(price_daily, basic_daily, how='left', on=['ts_code', 'trade_date'])
             # save
-            self._save_to_db(info_daily, table_stock_price)
-            print("Successful load daily price: %s" % yyyymmdd)
+            dbutil.save_df(info_daily, table_stock_price)
+            print("Successful load daily price: %s" % trade_date)
             time.sleep(2)
         except Exception as e:
-            print("Failed to load daily price: %s" % yyyymmdd)
+            print("Failed to load daily price: %s" % trade_date)
             raise e
 
     def save_daily_info(self, start_date, end_date):
@@ -121,23 +118,13 @@ class StockInfo:
         :param start_date: str
         :param end_date: str
         """
-        query_stock_profit = 'income'
-        fields_stock_profit = 'ts_code,ann_date,f_ann_date,end_date,report_type,basic_eps,diluted_eps,' \
-                              'total_revenue,operate_profit,total_profit,income_tax,n_income,n_income_attr_p'
         try:
             # stock profit exit
-            stock_profit = self._pro.query(query_stock_profit, ts_code=stock_code, start_date=start_date,
-                                           end_date=end_date, fields=fields_stock_profit)
+            stock_profit = tsutil.query_stock_profit(stock_code, start_date, end_date)
             # type conversion
-            stock_profit['ann_date'] = pd.to_datetime(stock_profit['ann_date'],
-                                                      format=const.DATE_FORMAT_TUSHARE,
-                                                      errors='coerce')
-            stock_profit['f_ann_date'] = pd.to_datetime(stock_profit['f_ann_date'],
-                                                        format=const.DATE_FORMAT_TUSHARE,
-                                                        errors='coerce')
-            stock_profit['end_date'] = pd.to_datetime(stock_profit['end_date'],
-                                                      format=const.DATE_FORMAT_TUSHARE,
-                                                      errors='coerce')
+            stock_profit['ann_date'] = dateutil.tsformat_col_to_datetime(stock_profit['ann_date'])
+            stock_profit['f_ann_date'] = dateutil.tsformat_col_to_datetime(stock_profit['f_ann_date'])
+            stock_profit['end_date'] = dateutil.tsformat_col_to_datetime(stock_profit['end_date'])
             time.sleep(5)
             return stock_profit
         except Exception as e:
@@ -157,13 +144,13 @@ class StockInfo:
         table_stock_profit = 'stock_profit'
         try:
             # load stock list
-            stock_list = pd.read_sql(sql_stock_list, con=self._engine)
+            stock_list = dbutil.read_df(sql_stock_list)
             # iterate
             for stock_code in stock_list['ts_code']:
                 stock_profit = self._get_stock_profit(stock_code, start_date=start_date, end_date=end_date)
                 # insert latest records
                 if stock_profit.shape[0] > 0:
-                    self._save_to_db(stock_profit, table_stock_profit)
+                    dbutil.save_df(stock_profit, table_stock_profit)
                     print("Successfully load stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
                 else:
                     print("No stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
@@ -183,23 +170,23 @@ class StockInfo:
         try:
             # load historic data
             max_date = {}
-            profit_hist = pd.read_sql_query(sql_stock_profit, con=self._engine)
+            profit_hist = dbutil.read_df(sql_stock_profit)
             for row in profit_hist.iterrows():
                 max_date[row[1]['ts_code']] = row[1]['date']
             # load stock list
-            stock_list = pd.read_sql(sql_stock_list, con=self._engine)
+            stock_list = dbutil.read_df(sql_stock_list)
             # iterate
             for stock_code in stock_list['ts_code']:
                 start_date = max_date.get(stock_code, None)
-                end_date = dateutil.datetime_to_yyyymmdd(datetime.now())
+                end_date = dateutil.datetime_to_tsformat(datetime.now())
                 if not start_date is None:
-                    start_date = dateutil.datetime_to_yyyymmdd(dau.get_first_day_of_next_month(start_date))
+                    start_date = dateutil.datetime_to_tsformat(dateutil.get_first_day_of_next_month(start_date))
                     if start_date > end_date:
                         continue
                 stock_profit = self._get_stock_profit(stock_code, start_date=start_date, end_date=end_date)
                 # insert latest records
                 if stock_profit.shape[0] > 0:
-                    self._save_to_db(stock_profit, table_stock_profit)
+                    dbutil.save_df(stock_profit, table_stock_profit)
                     print("Successfully load stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
                 else:
                     print("No stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
