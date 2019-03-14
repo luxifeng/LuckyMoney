@@ -69,22 +69,21 @@ CREATE TABLE stock_profit(
 -- 指数列表
 DROP TABLE IF EXISTS index_basic;
 CREATE TABLE index_basic(
-    id INT AUTO_INCREMENT COMMENT '自增id',
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '自增id',
     ts_code VARCHAR(24) NOT NULL UNIQUE DEFAULT '000000' COMMENT 'TS代码',
     name VARCHAR(24) COMMENT '简称',
-    fullname VARCHAR(24) COMMENT '指数全称',
+    fullname VARCHAR(128) COMMENT '指数全称',
     market VARCHAR(24) COMMENT '市场',
     publisher VARCHAR(24) COMMENT '发布方',
     index_type VARCHAR(24) COMMENT '指数风格',
     category VARCHAR(24) COMMENT '指数类别',
-    base_date VARCHAR(24) COMMENT '基期',
-    base_point NUMERIC(24) COMMENT '基点',
-    list_date VARCHAR(24) COMMENT '发布日期',
+    base_date DATE COMMENT '基期',
+    base_point DECIMAL(18, 4) COMMENT '基点',
+    list_date DATE COMMENT '发布日期',
     weight_rule VARCHAR(24) COMMENT '加权方式',
-    desc VARCHAR(24) COMMENT '描述',
-    exp_date VARCHAR(24) COMMENT '终止日期',
-    PRIMARY KEY (id)
-)
+    `desc` VARCHAR(1024) COMMENT '描述',
+    exp_date DATE COMMENT '终止日期'
+);
 
 -- 指数成分与权重表
 DROP TABLE IF EXISTS index_comp;

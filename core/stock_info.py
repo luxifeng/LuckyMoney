@@ -118,11 +118,7 @@ class StockInfo:
         try:
             # stock profit exit
             stock_profit = tsutil.query_stock_profit(stock_code, start_date, end_date)
-            # type conversion
-            stock_profit['ann_date'] = dateutil.tsformat_col_to_datetime(stock_profit['ann_date'])
-            stock_profit['f_ann_date'] = dateutil.tsformat_col_to_datetime(stock_profit['f_ann_date'])
-            stock_profit['end_date'] = dateutil.tsformat_col_to_datetime(stock_profit['end_date'])
-            time.sleep(5)
+            time.sleep(2)
             return stock_profit
         except Exception as e:
             print("Failed to load stock profit: %s" % stock_code)
@@ -155,13 +151,23 @@ class StockInfo:
                 # insert latest records
                 if stock_profit.shape[0] > 0:
                     stock_profit_exist = dbutil.read_df(sql_stock_profit % stock_code)
+                    stock_profit_exist['ann_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['ann_date'])
+                    stock_profit_exist['f_ann_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['f_ann_date'])
+                    stock_profit_exist['end_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['end_date'])
+                    stock_profit_exist['report_type'] = stock_profit_exist['report_type'].apply(lambda x: str(x))
                     if stock_profit_exist.shape[0] > 0:
-                        stock_profit = pd.merge(stock_profit, stock_profit_exist, how='left', on=['ann_date', 'f_ann_date', 'end_date', 'report_type'])
-                        stock_profit = stock_profit[pd.notnull(stock_profit['flag_col'])]
+                        stock_profit = pd.merge(stock_profit, stock_profit_exist, how='left', on=['ann_date', 'f_ann_date', 'end_date', 'report_type', 'end_date'])
+                        stock_profit = stock_profit[pd.isnull(stock_profit['flag_col'])]
+                        stock_profit = stock_profit.drop(['flag_col'], axis=1)
+                if stock_profit.shape[0] > 0:
+                    # type conversion
+                    stock_profit['ann_date'] = dateutil.tsformat_col_to_datetime(stock_profit['ann_date'])
+                    stock_profit['f_ann_date'] = dateutil.tsformat_col_to_datetime(stock_profit['f_ann_date'])
+                    stock_profit['end_date'] = dateutil.tsformat_col_to_datetime(stock_profit['end_date'])
                     dbutil.save_df(stock_profit, table_stock_profit)
-                    print("Successfully load stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
+                    print("Successfully load stock profit: %s, num: %d" % (stock_code, stock_profit.shape[0]))
                 else:
-                    print("No stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
+                    print("No stock profit: %s" % stock_code)
         except Exception as e:
             print(e)
 
@@ -170,5 +176,5 @@ class StockInfo:
 si = StockInfo()
 # si.save_stock_list()
 # si.save_stock_info(const.FILE_STOCK_LIST, const.DIR_STOCK_INFO)
-si.save_daily_info('20140720', '20190310')
-# si.save_stock_profit_auto()
+# si.save_daily_info('20140720', '20190310')
+si.save_stock_profit('20000101', '20190310')

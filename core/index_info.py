@@ -29,11 +29,16 @@ class IndexInfo:
         :return bool
         """
         table_index_list = "index_basic"
+        sql_delete_index_basic = 'DELETE FROM %s' % table_index_list
         try:
             index_list_csi = tsutil.query_index_list("CSI")
             index_list_sse = tsutil.query_index_list('SSE')
             index_list_szse = tsutil.query_index_list('SZSE')
             index_list = index_list_csi.append([index_list_sse, index_list_szse])
+            index_list['base_date'] = dateutil.tsformat_col_to_datetime(index_list['base_date'])
+            index_list['list_date'] = dateutil.tsformat_col_to_datetime(index_list['list_date'])
+            index_list['exp_date'] = dateutil.tsformat_col_to_datetime(index_list['exp_date'])
+            dbutil.read_df(sql_delete_index_basic)
             dbutil.save_df(index_list, table_index_list)
             print("Successfully load index list")
         except Exception as e:

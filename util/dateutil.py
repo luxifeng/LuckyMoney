@@ -87,3 +87,7 @@ class dateutil:
     @classmethod
     def tsformat_col_to_datetime(cls, col):
         return pd.to_datetime(col, format=const.DATE_FORMAT_TUSHARE, errors='coerce')
+
+    @classmethod
+    def datetime_col_to_tsformat(cls, col):
+        return col.apply(lambda x: datetime.strftime(x, cls.DATE_FORMAT_TUSHARE))

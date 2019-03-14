@@ -16,11 +16,11 @@ class dbutil:
     engine = create_engine(const.MYSQL_CONN)
 
     @classmethod
-    def save_df(cls, df, table):
+    def save_df(cls, df, table, if_exists='append'):
         """
         保存dataframe到数据库
         """
-        pd.io.sql.to_sql(df, table, con=cls.engine, if_exists='append', index=False, chunksize=5000)
+        pd.io.sql.to_sql(df, table, con=cls.engine, if_exists=if_exists, index=False, chunksize=5000)
 
     @classmethod
     def read_df(cls, sql):
