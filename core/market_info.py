@@ -3,7 +3,7 @@
 市场层面信息
 
 @author: Lucy
-@file: get_stock_list.py
+@file: market_info.py
 @time: 2018/01/28
 """
 

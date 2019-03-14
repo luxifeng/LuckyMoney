@@ -137,7 +137,14 @@ class StockInfo:
         :param end_date: str
             如'20181201'
         """
-        sql_stock_list = 'SELECT ts_code FROM stock_basic'
+        start_date_tmp = dateutil.tsformat_to_datetime(start_date)
+        start_date_tmp = dateutil.datetime_to_dbformat(start_date_tmp)
+        end_date_tmp = dateutil.tsformat_to_datetime(end_date)
+        end_date_tmp = dateutil.datetime_to_dbformat(end_date_tmp)
+        sql_stock_list = 'SELECT DISTINCT ts_code FROM stock_price'
+        sql_stock_profit = 'SELECT ann_date, f_ann_date, end_date, report_type, 1 AS flag_col FROM stock_profit ' \
+                           'WHERE ts_code=\'%s\' AND ann_date BETWEEN \'' + start_date_tmp +\
+                           '\' AND \'' + end_date_tmp + '\''
         table_stock_profit = 'stock_profit'
         try:
             # load stock list
@@ -147,6 +154,10 @@ class StockInfo:
                 stock_profit = self._get_stock_profit(stock_code, start_date=start_date, end_date=end_date)
                 # insert latest records
                 if stock_profit.shape[0] > 0:
+                    stock_profit_exist = dbutil.read_df(sql_stock_profit % stock_code)
+                    if stock_profit_exist.shape[0] > 0:
+                        stock_profit = pd.merge(stock_profit, stock_profit_exist, how='left', on=['ann_date', 'f_ann_date', 'end_date', 'report_type'])
+                        stock_profit = stock_profit[pd.notnull(stock_profit['flag_col'])]
                     dbutil.save_df(stock_profit, table_stock_profit)
                     print("Successfully load stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
                 else:
@@ -154,41 +165,6 @@ class StockInfo:
         except Exception as e:
             print(e)
 
-    def save_stock_profit_auto(self):
-        """
-        按个股保存利润数据
-        个股列表来自数据库
-        起始时间为数据库中group by stock_code的max(实际公布日期)的下个月
-        结束时间为今日
-        """
-        sql_stock_list = 'SELECT ts_code FROM stock_basic'
-        sql_stock_profit = 'SELECT ts_code, MAX(f_ann_date) AS date FROM stock_profit GROUP BY ts_code'
-        table_stock_profit = 'stock_profit'
-        try:
-            # load historic data
-            max_date = {}
-            profit_hist = dbutil.read_df(sql_stock_profit)
-            for row in profit_hist.iterrows():
-                max_date[row[1]['ts_code']] = row[1]['date']
-            # load stock list
-            stock_list = dbutil.read_df(sql_stock_list)
-            # iterate
-            for stock_code in stock_list['ts_code']:
-                start_date = max_date.get(stock_code, None)
-                end_date = dateutil.datetime_to_tsformat(datetime.now())
-                if not start_date is None:
-                    start_date = dateutil.datetime_to_tsformat(dateutil.get_first_day_of_next_month(start_date))
-                    if start_date > end_date:
-                        continue
-                stock_profit = self._get_stock_profit(stock_code, start_date=start_date, end_date=end_date)
-                # insert latest records
-                if stock_profit.shape[0] > 0:
-                    dbutil.save_df(stock_profit, table_stock_profit)
-                    print("Successfully load stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
-                else:
-                    print("No stock profit: %s, start: %s, end: %s" % (stock_code, start_date, end_date))
-        except Exception as e:
-            print(e)
 
 
 si = StockInfo()
