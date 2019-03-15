@@ -1,9 +1,9 @@
 # -*- coding:utf-8 -*-
 """
-指数层面信息
+指数层面信息，包括获取指数列表、成分股和权重
 
 @author: Lucy
-@file: index_info.py
+@file: index.py
 @time: 2019/03/02
 """
 
@@ -11,8 +11,7 @@ import os
 import pandas as pd
 import time
 from datetime import datetime
-from common.constant import const
-from core.market_info import MarketInfo
+from core.market import MarketInfo
 from util.dateutil import dateutil
 from util.dbutil import dbutil
 from util.tsutil import tsutil

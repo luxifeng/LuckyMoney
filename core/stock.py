@@ -1,14 +1,17 @@
 # -*- coding:utf-8 -*-
 """
+个股层面信息
+包括个股列表、价格、指标、利润信息
+
 @author: Lucy
-@file: stock_info.py
+@file: stock.py
 @time: 2019/03/03
 """
 
 import time
 import pandas as pd
 from datetime import datetime
-from core.market_info import MarketInfo
+from core.market import MarketInfo
 from util.dateutil import dateutil
 from util.dbutil import dbutil
 from util.tsutil import tsutil
@@ -139,7 +142,7 @@ class StockInfo:
         end_date_tmp = dateutil.datetime_to_dbformat(end_date_tmp)
         sql_stock_list = 'SELECT DISTINCT ts_code FROM stock_price'
         sql_stock_profit = 'SELECT ann_date, f_ann_date, end_date, report_type, 1 AS flag_col FROM stock_profit ' \
-                           'WHERE ts_code=\'%s\' AND ann_date BETWEEN \'' + start_date_tmp +\
+                           'WHERE ts_code=\'%s\' AND ann_date BETWEEN \'' + start_date_tmp + \
                            '\' AND \'' + end_date_tmp + '\''
         table_stock_profit = 'stock_profit'
         try:
@@ -151,12 +154,13 @@ class StockInfo:
                 # insert latest records
                 if stock_profit.shape[0] > 0:
                     stock_profit_exist = dbutil.read_df(sql_stock_profit % stock_code)
-                    stock_profit_exist['ann_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['ann_date'])
-                    stock_profit_exist['f_ann_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['f_ann_date'])
-                    stock_profit_exist['end_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['end_date'])
-                    stock_profit_exist['report_type'] = stock_profit_exist['report_type'].apply(lambda x: str(x))
                     if stock_profit_exist.shape[0] > 0:
-                        stock_profit = pd.merge(stock_profit, stock_profit_exist, how='left', on=['ann_date', 'f_ann_date', 'end_date', 'report_type', 'end_date'])
+                        stock_profit_exist['ann_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['ann_date'])
+                        stock_profit_exist['f_ann_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['f_ann_date'])
+                        stock_profit_exist['end_date'] = dateutil.datetime_col_to_tsformat(stock_profit_exist['end_date'])
+                        stock_profit_exist['report_type'] = stock_profit_exist['report_type'].apply(lambda x: str(x))
+                        stock_profit = pd.merge(stock_profit, stock_profit_exist, how='left',
+                                                on=['ann_date', 'f_ann_date', 'end_date', 'report_type', 'end_date'])
                         stock_profit = stock_profit[pd.isnull(stock_profit['flag_col'])]
                         stock_profit = stock_profit.drop(['flag_col'], axis=1)
                 if stock_profit.shape[0] > 0:
@@ -170,7 +174,6 @@ class StockInfo:
                     print("No stock profit: %s" % stock_code)
         except Exception as e:
             print(e)
-
 
 
 si = StockInfo()

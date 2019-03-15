@@ -51,3 +51,7 @@ class tsutil:
     @classmethod
     def query_index_component_daily(cls, trade_date):
         return cls.pro.query('index_weight', trade_date=trade_date)
+
+    @classmethod
+    def query_trade_date(cls, start_date, end_date):
+        return cls.pro.query('trade_cal', exchange='', start_date=start_date, end_date=end_date)
