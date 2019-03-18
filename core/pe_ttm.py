@@ -35,15 +35,13 @@ class PEInfo:
         :param start_date: str
         :param end_date: str
         """
-        sql_stock_price = 'SELECT ts_code, trade_date, close, total_share FROM stock_price WHERE trade_date=\'%s\''
         sql_index_comp = 'SELECT index_code, con_code, trade_date, weight FROM index_comp WHERE trade_date <= '
-        date_iterator = end_date
-        mi = MarketInfo()
-        all_trade_date = mi.get_all_trade_date()
-        trade_date_dict = {}
-        for row in all_trade_date.iterrows():
-            trade_date_dict[row[1]['cal_date']] = row[1]['is_open']
-        while int(date_iterator) >= int(start_date):
+        sql_stock_price = 'SELECT ts_code, trade_date, close, total_share FROM stock_price WHERE trade_date=\'%s\''
+        sql_stock_profit = ''
+        date_iterator = start_date
+        trade_date_dict = MarketInfo.get_all_open_date()
+        # 每日计算
+        while int(date_iterator) <= int(end_date):
             is_open = trade_date_dict.get(date_iterator, 0)
             if is_open == 0:
                 print("Not a trade date: %s" % date_iterator)

@@ -14,7 +14,8 @@ from util.dateutil import dateutil
 
 class MarketInfo:
 
-    def get_all_trade_date(self):
+    @classmethod
+    def get_all_trade_date(cls):
         """
         获取交易日期，2000年1月1日至今
         """
@@ -25,6 +26,19 @@ class MarketInfo:
         except Exception as e:
             print(e)
 
+    @classmethod
+    def get_all_open_date(cls):
+        """
+        获取所有开市日期
+        :return:
+        """
+        all_trade_date = cls.get_all_trade_date()
+        trade_date_dict = {}
+        for row in all_trade_date.iterrows():
+            trade_date_dict[row[1]['cal_date']] = row[1]['is_open']
+        return trade_date_dict
+
+    @classmethod
     def is_trade_date(self, my_date):
         """
         判断是否交易日

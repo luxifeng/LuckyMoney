@@ -117,5 +117,4 @@ class dateutil:
     def datetime_col_to_tsformat(cls, col):
         return col.apply(lambda x: datetime.strftime(x, cls.DATE_FORMAT_TUSHARE))
 
-
 print(dateutil.get_last_day('20190304'))
