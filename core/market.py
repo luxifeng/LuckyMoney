@@ -7,54 +7,85 @@
 @file: market.py
 @time: 2018/01/28
 """
+import xlrd
+import util.tsutil as tsu
+import util.dateutil as dtu
 
-from datetime import datetime
-from util.tsutil import tsutil
-from util.dateutil import dateutil
+
+FIELD_IS_OPEN = 'is_open'
+FIELD_CAL_DATE = 'cal_date'
+
 
 class MarketInfo:
 
-    @classmethod
-    def get_all_trade_date(cls):
-        """
-        获取交易日期，2000年1月1日至今
-        """
-        now = dateutil.datetime_to_tsformat(datetime.now())
-        try:
-            trade_date = tsutil.query_trade_date('20000101', now)
-            return trade_date
-        except Exception as e:
-            print(e)
+    def __init__(self):
+        self._trade_date = {}
+        self._delisted_stock = {}
 
-    @classmethod
-    def get_all_open_date(cls):
+    def load_trade_date(self, start_date, end_date):
         """
-        获取所有开市日期
-        :return:
+        获取日期与是否开市
+        :param start_date: str
+            起始日期，yyyymmdd，eg: 20180101
+        :param end_date: str
+            结束日期，yyyymmdd，eg: 20180101
+        :return: self
         """
-        all_trade_date = cls.get_all_trade_date()
-        trade_date_dict = {}
+        if start_date is None or end_date is None:
+            raise Exception("Date parameter error")
+        all_trade_date = tsu.query_trade_date(start_date, end_date)
+        self._trade_date.clear()
         for row in all_trade_date.iterrows():
-            trade_date_dict[row[1]['cal_date']] = row[1]['is_open']
-        return trade_date_dict
+            self._trade_date[row[1][FIELD_CAL_DATE]] = row[1][FIELD_IS_OPEN]
+        return self
 
-    @classmethod
     def is_trade_date(self, my_date):
         """
         判断是否交易日
-        :param date: datetime or str
+        :param my_date: str
+            输入日期，yyyymmdd，eg: 20180101
+        :return: bool
         """
-        if isinstance(my_date, datetime):
-            ndate = dateutil.datetime_to_tsformat(my_date)
-        elif isinstance(my_date, str):
-            ndate = my_date
-        else:
+        if not isinstance(my_date, str):
             return False
-        try:
-            res = tsutil.query_trade_date(start_date=ndate, end_date=ndate)
-            if res['is_open'].iloc[0] == 1:
-                return True
-            else:
-                return False
-        except Exception as e:
-            print(e)
+        if my_date not in self._trade_date:
+            res = tsu.query_trade_date(start_date=my_date, end_date=my_date)
+            self._trade_date[my_date] = res[FIELD_IS_OPEN].iloc[0]
+        return self._trade_date[my_date] == 1
+
+    def load_delisted_stock(self, file_path):
+        """
+        获取退市股票与退市日期
+        e.g:
+        代码	名称	退市日期	终止上市原因	退市时股价(元)	退市时每股净资产(元)	重组后代码	重组后简称	重组后上市日期	退入三板日期	三板代码	三板简称	退市股证券类型	重组后证券类型
+        000979.SZ	中弘退	2018-12-28	其他被终止上市的情形	0.2200	0.6749	——	——	——	——	——	——	A股	——
+        :param file_path: str
+            文件路径
+        :return: self
+        """
+        workbook = xlrd.open_workbook(file_path)
+        sheet1 = workbook.sheet_by_index(0)
+        row_num = sheet1.nrows
+        self._delisted_stock.clear()
+        for i in range(1, row_num + 1):
+            if sheet1.cell(i, 0).ctype == 0:
+                break
+            ts_code = sheet1.cell_value(i, 0)
+            date_tuple = xlrd.xldate_as_tuple(sheet1.cell_value(i, 2), workbook.datemode)
+            delisted_date = dtu.datetime_to_tsformat(dtu.tuple_to_date(date_tuple))
+            self._delisted_stock[ts_code] = delisted_date
+        return self
+
+    def is_delisted(self, ts_code, curr_date):
+        """
+        判断该日期是否退市
+        :param ts_code: str
+        :return: date or None
+        """
+        delisted_date = self._delisted_stock[ts_code]
+        if delisted_date is None:
+            return False
+        if dtu.tsformat_compare(curr_date, delisted_date) >= 0:
+            return True
+        return False
+

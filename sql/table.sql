@@ -104,7 +104,7 @@ CREATE TABLE index_comp(
 -- 指数pe
 DROP TABLE IF EXISTS index_pe;
 CREATE TABLE index_pe (
-    id INT AUTO_INCREMENT COMMENT '自增id',
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '自增id',
     index_code VARCHAR(24) NOT NULL DEFAULT '000000' COMMENT '指数代码',
     trade_date DATE NOT NULL DEFAULT '1970-01-01' COMMENT '交易日期',
     pe_ttm DECIMAL(18, 4) COMMENT '指数pe-ttm'

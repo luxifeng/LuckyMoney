@@ -12,19 +12,22 @@ from common.constant import const
 
 
 class dbutil:
-
-    engine = create_engine(const.MYSQL_CONN)
-
-    @classmethod
-    def save_df(cls, df, table, if_exists='append'):
-        """
-        保存dataframe到数据库
-        """
-        pd.io.sql.to_sql(df, table, con=cls.engine, if_exists=if_exists, index=False, chunksize=5000)
+    # mysql engine
+    __engine = create_engine(const.MYSQL_CONN)
 
     @classmethod
-    def read_df(cls, sql):
-        """
-        读取数据库数据到dataframe
-        """
-        return pd.read_sql_query(sql, con=cls.engine)
+    def connect(cls):
+        return cls.__engine
+
+
+def save_df(df, table, if_exists='append'):
+    """
+    保存dataframe到数据库
+    """
+    pd.io.sql.to_sql(df, table, con=dbutil.connect(), if_exists=if_exists, index=False, chunksize=5000)
+
+def read_df(sql):
+    """
+    读取数据库数据到dataframe
+    """
+    return pd.read_sql_query(sql, con=dbutil.connect())
